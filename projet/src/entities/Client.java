@@ -1,4 +1,4 @@
 package entities;
 
-public record Client() {
+public record Client(long id,String nom, String email ) {
 }
