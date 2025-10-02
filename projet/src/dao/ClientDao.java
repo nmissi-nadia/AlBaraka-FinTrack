@@ -15,7 +15,7 @@ public class ClientDao implements GenInDao<Client> {
 
     @Override
     public void create(Client cli) {
-        String sql="INSERT INTO clients(nom ,email) VALUES (?,?,?)";
+        String sql="INSERT INTO client(nom ,email) VALUES (?,?)";
         try (PreparedStatement stmt =connection.prepareStatement(sql)){
             stmt.setString(1,cli.nom());
             stmt.setString(2,cli.email());
@@ -28,7 +28,7 @@ public class ClientDao implements GenInDao<Client> {
 
     @Override
     public Client findById(int id) {
-        String sql="SELECT * FROM clients WHERE id=?";
+        String sql="SELECT * FROM client WHERE id=?";
         try(PreparedStatement stmt =connection.prepareStatement(sql) ){
             stmt.setInt(1,id);
             ResultSet rs=stmt.executeQuery();
@@ -45,7 +45,7 @@ public class ClientDao implements GenInDao<Client> {
     @Override
     public List findAll() {
         List<Client> clients = new ArrayList<>();
-        String sql="SELECT * FROM clients";
+        String sql="SELECT * FROM client";
         try (Statement stmt = connection.createStatement();
         ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()){
@@ -60,7 +60,7 @@ public class ClientDao implements GenInDao<Client> {
 
     @Override
     public void update(Client cl ) {
-        String sql="UPDATE clients SET nom=?,email=? WHERE id=?";
+        String sql="UPDATE client SET nom=?,email=? WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)){
             stmt.setString(1, cl.nom());
             stmt.setString(3, cl.email());
