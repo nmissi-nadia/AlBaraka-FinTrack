@@ -1,16 +1,20 @@
 === RAPPORT COMPLET ===
 
 --- Top 5 Clients ---
+Client: Sara Benali | Total: 25500.0
+Client: Ali Karim | Total: 6000.0
 Client: ahmed | Total: 4400.0
 Client: honaida | Total: 4000.0
 Client: nadia | Total: 4000.0
 
 --- Transactions par type/mois ---
-Mois: 10 | Type: VERSEMENT | Total: 4400.0
-Mois: 10 | Type: VIREMENT | Total: 4000.0
+Mois: 10 | Type: RETRAIT | Total: 31200.0
+Mois: 10 | Type: VERSEMENT | Total: 6400.0
+Mois: 10 | Type: VIREMENT | Total: 4300.0
 
 --- Comptes inactifs ---
 
 --- Transactions suspectes ---
+Tx ID: b9e37ac1-6cf3-4c54-8d26-6042e0e102da | Montant: 25000.0 | Type: RETRAIT | Date: 2025-10-03 21:53:57.175322
 
 --- Alertes comptes ---

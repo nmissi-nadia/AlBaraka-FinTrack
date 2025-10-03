@@ -32,7 +32,7 @@ public class CompteService {
         return compte;
     }
 
-    public List<Compte> rechercherComptesParClient(int clientId) {
+    public List<Compte> rechercherComptesParClient(UUID clientId) {
         return compteDao.findByClientId(clientId); // doit retourner List<Compte>
     }
 

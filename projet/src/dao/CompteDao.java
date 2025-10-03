@@ -8,16 +8,17 @@ import java.util.UUID;
 import utilitaire.exceptions.*;
 
 public class CompteDao implements GenInDao<Compte> {
+
     private final Connection connection;
 
     public CompteDao(Connection connection) {
         this.connection = connection;
     }
+
     @Override
     public void create(Compte compte) {
         String sql = "INSERT INTO compte (numero, solde, id_client, type_compte, decouvert_autorise, taux_interet) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
-
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, compte.getNumero());
             stmt.setDouble(2, compte.getSolde());
@@ -26,10 +27,10 @@ public class CompteDao implements GenInDao<Compte> {
             if (compte instanceof CompteCourant cc) {
                 stmt.setString(4, "COURANT");
                 stmt.setDouble(5, cc.getDecouvert());
-                stmt.setNull(6, java.sql.Types.NUMERIC);
+                stmt.setNull(6, Types.NUMERIC);
             } else if (compte instanceof CompteEpargne ce) {
                 stmt.setString(4, "EPARGNE");
-                stmt.setNull(5, java.sql.Types.NUMERIC);
+                stmt.setNull(5, Types.NUMERIC);
                 stmt.setDouble(6, ce.getTauxInteret());
             } else {
                 throw new IllegalArgumentException("Type de compte inconnu : " + compte.getClass().getSimpleName());
@@ -41,31 +42,14 @@ public class CompteDao implements GenInDao<Compte> {
         }
     }
 
-
     @Override
     public Compte findById(UUID id) {
         String sql = "SELECT * FROM compte WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setObject(1, id);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                String type = rs.getString("type_compte");
-                if ("COURANT".equalsIgnoreCase(type)) {
-                    return new CompteCourant(
-                            rs.getObject("id", java.util.UUID.class),
-                            rs.getString("numero"),
-                            rs.getDouble("solde"),
-                            rs.getObject("id_client",java.util.UUID.class),
-                            rs.getDouble("decouvert_autorise")
-                    );
-                } else if ("EPARGNE".equalsIgnoreCase(type)) {
-                    return new CompteEpargne(
-                            rs.getObject("id", java.util.UUID.class),
-                            rs.getString("numero"),
-                            rs.getDouble("solde"),
-                            rs.getObject("id_client",java.util.UUID.class),
-                            rs.getDouble("taux_interet")
-                    );
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToCompte(rs);
                 }
             }
         } catch (SQLException e) {
@@ -74,45 +58,26 @@ public class CompteDao implements GenInDao<Compte> {
         return null;
     }
 
-
     @Override
     public List<Compte> findAll() {
         List<Compte> comptes = new ArrayList<>();
-        String sql = "SELECT * FROM compte"; // pas 'comptes', sauf si ta table s'appelle vraiment ainsi
+        String sql = "SELECT * FROM compte";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                String type = rs.getString("type_compte");
-
-                if ("COURANT".equalsIgnoreCase(type)) {
-                    comptes.add(new CompteCourant(
-                            rs.getObject("id", java.util.UUID.class),
-                            rs.getString("numero"),
-                            rs.getDouble("solde"),
-                            rs.getObject("id_client",java.util.UUID.class),
-                            rs.getDouble("decouvert_autorise")
-                    ));
-                } else if ("EPARGNE".equalsIgnoreCase(type)) {
-                    comptes.add(new CompteEpargne(
-                            rs.getObject("id", java.util.UUID.class),
-                            rs.getString("numero"),
-                            rs.getDouble("solde"),
-                            rs.getObject("id_client",java.util.UUID.class),
-                            rs.getDouble("taux_interet")
-                    ));
-                }
+                comptes.add(mapResultSetToCompte(rs));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return comptes;
     }
-    public List<Compte> findByClientId(int clientId) {
-        List<Compte> comptes = new ArrayList<>();
-        String sql = "SELECT * FROM compte WHERE client_id=?";
 
+    public List<Compte> findByClientId(UUID clientId) {
+        List<Compte> comptes = new ArrayList<>();
+        String sql = "SELECT * FROM compte WHERE id_client = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, clientId);
+            ps.setObject(1, clientId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     comptes.add(mapResultSetToCompte(rs));
@@ -121,15 +86,12 @@ public class CompteDao implements GenInDao<Compte> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
         return comptes;
     }
 
-
-
     @Override
     public void update(Compte compte) {
-        String sql = "UPDATE compte SET numero=?, solde=?, id_client=?, type_compte=?, decouvert_autorise=?, taux_interet=? WHERE id=?";
+        String sql = "UPDATE compte SET numero = ?, solde = ?, id_client = ?, type_compte = ?, decouvert_autorise = ?, taux_interet = ? WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, compte.getNumero());
             stmt.setDouble(2, compte.getSolde());
@@ -154,10 +116,9 @@ public class CompteDao implements GenInDao<Compte> {
         }
     }
 
-
     @Override
     public void delete(Compte compte) {
-        String sql = "DELETE FROM compte WHERE id=?";
+        String sql = "DELETE FROM compte WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setObject(1, compte.getId());
             stmt.executeUpdate();
@@ -165,38 +126,42 @@ public class CompteDao implements GenInDao<Compte> {
             e.printStackTrace();
         }
     }
+
     private Compte mapResultSetToCompte(ResultSet rs) throws SQLException {
-        UUID id = rs.getObject("id", java.util.UUID.class);
-        String numero = rs.getString("numero_compte");
+        UUID id = rs.getObject("id", UUID.class);
+        String numero = rs.getString("numero");
         double solde = rs.getDouble("solde");
-        UUID clientId = rs.getObject("client_id",java.util.UUID.class);
+        UUID clientId = rs.getObject("id_client", UUID.class);
         String typeCompte = rs.getString("type_compte");
 
         if ("COURANT".equalsIgnoreCase(typeCompte)) {
             double decouvert = rs.getDouble("decouvert_autorise");
             return new CompteCourant(id, numero, solde, clientId, decouvert);
-        }
-
-        else if ("EPARGNE".equalsIgnoreCase(typeCompte)) {
+        } else if ("EPARGNE".equalsIgnoreCase(typeCompte)) {
             double tauxInteret = rs.getDouble("taux_interet");
             return new CompteEpargne(id, numero, solde, clientId, tauxInteret);
         }
 
         throw new SQLException("Type de compte inconnu : " + typeCompte);
     }
+
     public List<String> comptesInactifs() {
         List<String> result = new ArrayList<>();
         String sql = """
-        SELECT cp.numero, c.nom, MAX(t.date) as derniere_tx
+        SELECT cp.numero, c.nom, MAX(t.date) AS derniere_tx
         FROM compte cp
         JOIN client c ON cp.id_client = c.id
-        LEFT JOIN transactions t\s
+        LEFT JOIN transactions t
           ON cp.id = t.compte_source OR cp.id = t.compte_destination
         GROUP BY cp.numero, c.nom
         HAVING MAX(t.date) IS NULL OR MAX(t.date) < now() - interval '6 months'
     """;
-        try (PreparedStatement ps = connection.prepareStatement(sql);
+
+        // ⚡ Ouvrir une connexion ici plutôt que d'utiliser "connection" externe
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
+
             while (rs.next()) {
                 result.add("Compte: " + rs.getString("numero") +
                         " | Client: " + rs.getString("nom") +
@@ -207,32 +172,38 @@ public class CompteDao implements GenInDao<Compte> {
         }
         return result;
     }
-    public List<String> getAlertesComptes() throws SQLException {
+
+    public List<String> getAlertesComptes() {
         List<String> alertes = new ArrayList<>();
         double seuilSolde = 1000.0;
         int joursInactivite = 90;
-        String sql = "SELECT c.id_compte, c.solde, " +
-                "(SELECT MAX(t.date_transaction) FROM transactions t WHERE t.id_compte = c.id_compte) as derniere_transaction " +
-                "FROM comptes c";
+
+        String sql = """
+        SELECT c.id, c.solde,
+               (SELECT MAX(t.date)
+                FROM transactions t
+                WHERE t.compte_source = c.id OR t.compte_destination = c.id) AS derniere_transaction
+        FROM compte c
+    """;
 
         try (Connection conn = Database.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                String idCompte = rs.getString("id_compte");
+                String idCompte = rs.getString("id");
                 double solde = rs.getDouble("solde");
-                Date derniereTransaction = rs.getDate("derniere_transaction");
+                Timestamp derniereTransaction = rs.getTimestamp("derniere_transaction");
 
                 if (solde < seuilSolde) {
                     alertes.add("Compte " + idCompte + " : solde bas (" + solde + " MAD)");
                 }
+
                 if (derniereTransaction != null) {
-                    long joursEcoules =
-                            java.time.temporal.ChronoUnit.DAYS.between(
-                                    derniereTransaction.toLocalDate(),
-                                    java.time.LocalDate.now()
-                            );
+                    long joursEcoules = java.time.temporal.ChronoUnit.DAYS.between(
+                            derniereTransaction.toLocalDateTime().toLocalDate(),
+                            java.time.LocalDate.now()
+                    );
                     if (joursEcoules > joursInactivite) {
                         alertes.add("Compte " + idCompte + " : inactif depuis " + joursEcoules + " jours");
                     }
@@ -240,11 +211,11 @@ public class CompteDao implements GenInDao<Compte> {
                     alertes.add("Compte " + idCompte + " : jamais actif");
                 }
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+
         return alertes;
     }
-
-
-
 
 }
