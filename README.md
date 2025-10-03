@@ -68,7 +68,8 @@ classDiagram
         UUID idCompte
     }
 
-    enum TransactionType {
+    class TransactionType {
+        <<enumeration>>
         VERSEMENT
         RETRAIT
         VIREMENT
