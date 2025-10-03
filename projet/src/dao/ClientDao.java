@@ -3,6 +3,8 @@ package dao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+
 import entities.*;
 
 public class ClientDao implements GenInDao<Client> {
@@ -27,10 +29,10 @@ public class ClientDao implements GenInDao<Client> {
     }
 
     @Override
-    public Client findById(int id) {
+    public Client findById(UUID id) {
         String sql="SELECT * FROM client WHERE id=?";
         try(PreparedStatement stmt =connection.prepareStatement(sql) ){
-            stmt.setInt(1,id);
+            stmt.setObject(1,id);
             ResultSet rs=stmt.executeQuery();
             if(rs.next()){
                 rs.getInt("id");
@@ -43,28 +45,34 @@ public class ClientDao implements GenInDao<Client> {
     }
 
     @Override
-    public List findAll() {
+    // dao/ClientDao.java
+    public List<Client> findAll() {
         List<Client> clients = new ArrayList<>();
-        String sql="SELECT * FROM client";
-        try (Statement stmt = connection.createStatement();
-        ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()){
-
+        String sql = "SELECT id, nom, email FROM client";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Client client = new Client(
+                        rs.getObject("id", java.util.UUID.class),
+                        rs.getString("nom"),
+                        rs.getString("email")
+                );
+                clients.add(client);
             }
-
-        } catch (SQLException e){
+        } catch (SQLException e) {
             e.printStackTrace();
         }
-        return List.of();
+        return clients;
     }
+
 
     @Override
     public void update(Client cl ) {
         String sql="UPDATE client SET nom=?,email=? WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)){
             stmt.setString(1, cl.nom());
-            stmt.setString(3, cl.email());
-            stmt.setInt(4, (int) cl.id());
+            stmt.setString(2, cl.email());
+            stmt.setObject(3, cl.id());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -74,9 +82,9 @@ public class ClientDao implements GenInDao<Client> {
 
     @Override
     public void delete(Client client) {
-        String sql = "DELETE FROM clients WHERE id=?";
+        String sql = "DELETE FROM client WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, (int) client.id());
+            stmt.setObject(1,client.id());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

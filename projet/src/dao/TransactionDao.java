@@ -1,13 +1,9 @@
 package dao;
 
 import entities.*;
-import utilitaire.exceptions.Database;
-
-
 import java.sql.*;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import utilitaire.exceptions.Database;
 
 public class TransactionDao implements GenInDao<Transaction> {
     private final Connection connection;
@@ -18,23 +14,55 @@ public class TransactionDao implements GenInDao<Transaction> {
 
     @Override
     public void create(Transaction transaction) {
-        String sql = "INSERT INTO transactions (montant, type_tx, lieu, id_compte) VALUES (?, ?, ?, ?)";
+        if (!compteExiste(transaction.compteSource())) {
+            System.err.println("Le compte source n'existe pas : " + transaction.compteSource());
+            return;
+        }
+
+        if (transaction.compteDestination() != null && !compteExiste(transaction.compteDestination())) {
+            System.err.println("Le compte destination n'existe pas : " + transaction.compteDestination());
+            return;
+        }
+
+        String sql = """
+        INSERT INTO transactions (montant, type_tx, lieu, compte_source, compte_destination)
+        VALUES (?, ?, ?, ?, ?)
+    """;
+
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setDouble(1, transaction.montant());
-            stmt.setString(2, transaction.type().name()); // Enum en String
+            stmt.setString(2, transaction.type().name());
             stmt.setString(3, transaction.lieu());
-            stmt.setLong(4, transaction.idCompte());
+            stmt.setObject(4, transaction.compteSource());       // UUID
+            stmt.setObject(5, transaction.compteDestination());  // UUID ou null
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
+    /**
+     * Vérifie si un compte existe dans la table compte
+     */
+    private boolean compteExiste(UUID compteId) {
+        String sql = "SELECT 1 FROM compte WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setObject(1, compteId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next(); // retourne true si au moins une ligne
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
     @Override
-    public Transaction findById(int id) {
+    public Transaction findById(UUID id) {
         String sql = "SELECT * FROM transactions WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, id);
+            stmt.setObject(1, id);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return mapResultSetToTransaction(rs);
@@ -62,13 +90,14 @@ public class TransactionDao implements GenInDao<Transaction> {
 
     @Override
     public void update(Transaction transaction) {
-        String sql = "UPDATE transactions SET montant=?, type_tx=?, lieu=?, id_compte=? WHERE id=?";
+        String sql = "UPDATE transactions SET montant=?, type_tx=?, lieu=?, compte_source=?, compte_destination=? WHERE id=?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setDouble(1, transaction.montant());
             stmt.setString(2, transaction.type().name());
             stmt.setString(3, transaction.lieu());
-            stmt.setLong(4, transaction.idCompte());
-            stmt.setLong(5, transaction.id());
+            stmt.setObject(4, transaction.compteSource());
+            stmt.setObject(5, transaction.compteDestination());
+            stmt.setObject(6, transaction.id());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -79,18 +108,19 @@ public class TransactionDao implements GenInDao<Transaction> {
     public void delete(Transaction transaction) {
         String sql = "DELETE FROM transactions WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setLong(1, transaction.id());
+            stmt.setObject(1, transaction.id());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public List<Transaction> findByCompteId(long compteId) {
+    public List<Transaction> findByCompteId(UUID compteId) {
         List<Transaction> transactions = new ArrayList<>();
-        String sql = "SELECT * FROM transactions WHERE id_compte = ?";
+        String sql = "SELECT * FROM transactions WHERE compte_source = ? OR compte_destination = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setLong(1, compteId);
+            stmt.setObject(1, compteId);
+            stmt.setObject(2, compteId);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 transactions.add(mapResultSetToTransaction(rs));
@@ -103,26 +133,27 @@ public class TransactionDao implements GenInDao<Transaction> {
 
     private Transaction mapResultSetToTransaction(ResultSet rs) throws SQLException {
         return new Transaction(
-                rs.getLong("id"),
+                rs.getObject("id", UUID.class),
                 rs.getTimestamp("date").toLocalDateTime(),
                 rs.getDouble("montant"),
-                TransactionType.valueOf(rs.getString("type_tx")), // convertit VARCHAR → Enum
+                TransactionType.valueOf(rs.getString("type_tx")),
                 rs.getString("lieu"),
-                rs.getLong("id_compte")
+                rs.getObject("compte_source", UUID.class),
+                rs.getObject("compte_destination", UUID.class)
         );
     }
-    // dao/TransactionDao.java
+
     public List<String> top5Clients() {
         List<String> result = new ArrayList<>();
         String sql = """
         SELECT c.nom, SUM(t.montant) as total
         FROM client c
         JOIN compte cp ON c.id = cp.id_client
-        JOIN transactions t ON cp.id = t.id_compte
+        JOIN transactions t ON (cp.id = t.compte_source OR cp.id = t.compte_destination)
         GROUP BY c.nom
         ORDER BY total DESC
         LIMIT 5
-    """;
+        """;
         try (PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -133,7 +164,34 @@ public class TransactionDao implements GenInDao<Transaction> {
         }
         return result;
     }
+    public Map<String, Double> getRapportMensuel(int mois, int annee) throws SQLException {
+        Map<String, Double> rapport = new HashMap<>();
 
+        String sql = "SELECT type_transaction, SUM(montant) as total " +
+                "FROM transactions " +
+                "WHERE EXTRACT(MONTH FROM date_transaction) = ? " +
+                "AND EXTRACT(YEAR FROM date_transaction) = ? " +
+                "GROUP BY type_transaction";
+
+        try (Connection conn = Database.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, mois);
+            stmt.setInt(2, annee);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String type = rs.getString("type_transaction");
+                    double total = rs.getDouble("total");
+                    rapport.put(type, total);
+                }
+            }
+        }
+        return rapport;
+    }
+
+
+    // Transactions par type et mois
     public List<String> transactionsParTypeEtMois() {
         List<String> result = new ArrayList<>();
         String sql = """
@@ -141,7 +199,7 @@ public class TransactionDao implements GenInDao<Transaction> {
         FROM transactions
         GROUP BY type_tx, mois
         ORDER BY mois, type_tx
-    """;
+        """;
         try (PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -155,13 +213,14 @@ public class TransactionDao implements GenInDao<Transaction> {
         return result;
     }
 
+    // Transactions suspectes (> 10 000)
     public List<String> transactionsSuspectes() {
         List<String> result = new ArrayList<>();
         String sql = "SELECT id, montant, type_tx, date FROM transactions WHERE montant > 10000";
         try (PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                result.add("Tx ID: " + rs.getLong("id") +
+                result.add("Tx ID: " + rs.getObject("id") +
                         " | Montant: " + rs.getDouble("montant") +
                         " | Type: " + rs.getString("type_tx") +
                         " | Date: " + rs.getTimestamp("date"));
@@ -171,7 +230,4 @@ public class TransactionDao implements GenInDao<Transaction> {
         }
         return result;
     }
-
-
-
 }

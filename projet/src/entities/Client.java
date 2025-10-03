@@ -1,8 +1,10 @@
 package entities;
 
-public record Client(long id,String nom, String email ) {
+import java.util.UUID;
+
+public record Client(UUID id, String nom, String email ) {
     @Override
     public String toString() {
-        return "Client[id=" + id() + ", nom=" + nom() + "]";
+        return "Client[id=" + id() + ", nom=" + nom() + ", email=" + email() + "]";
     }
 }

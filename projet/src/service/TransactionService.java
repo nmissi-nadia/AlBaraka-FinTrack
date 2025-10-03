@@ -2,7 +2,9 @@ package service;
 
 import dao.TransactionDao;
 import entities.Transaction;
+
 import java.util.List;
+import java.util.UUID;
 
 public class TransactionService {
     private final TransactionDao transactionDao;
@@ -19,18 +21,17 @@ public class TransactionService {
         return transactionDao.findAll();
     }
 
-    public List<Transaction> listerTransactionsParCompte(int compteId) {
+    public List<Transaction> listerTransactionsParCompte(UUID compteId) {
         return transactionDao.findByCompteId(compteId);
     }
+
     public List<String> transactionsParTypeEtMois() {
         return transactionDao.transactionsParTypeEtMois();
     }
-    public List<String> top5Clients() {
-        return transactionDao.top5Clients();
-    }
+
+
+
     public List<String> transactionsSuspectes() {
         return transactionDao.transactionsSuspectes();
     }
-
-
 }

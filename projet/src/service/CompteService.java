@@ -5,6 +5,7 @@ import entities.*;
 import utilitaire.exceptions.CompteNotFoundException;
 
 import java.util.List;
+import java.util.UUID;
 
 public class CompteService {
     private final CompteDao compteDao;
@@ -13,17 +14,17 @@ public class CompteService {
         this.compteDao = compteDao;
     }
 
-    public void creerCompteCourant(String numero, double solde, int clientId, double decouvertAutorise) {
-        CompteCourant cc = new CompteCourant(0, numero, solde, clientId, decouvertAutorise);
+    public void creerCompteCourant(String numero, double solde, UUID clientId, double decouvertAutorise) {
+        CompteCourant cc = new CompteCourant(null, numero, solde, clientId, decouvertAutorise);
         compteDao.create(cc);
     }
 
-    public void creerCompteEpargne(String numero, double solde, int clientId, double tauxInteret) {
-        CompteEpargne ce = new CompteEpargne(0, numero, solde, clientId, tauxInteret);
+    public void creerCompteEpargne(String numero, double solde, UUID clientId, double tauxInteret) {
+        CompteEpargne ce = new CompteEpargne(null, numero, solde, clientId, tauxInteret);
         compteDao.create(ce);
     }
 
-    public Compte rechercherCompteParId(int id) {
+    public Compte rechercherCompteParId(UUID id) {
         Compte compte = compteDao.findById(id);
         if (compte == null) {
             throw new CompteNotFoundException("Compte avec id " + id + " introuvable.");
@@ -58,12 +59,8 @@ public class CompteService {
     public List<Compte> listerComptes() {
         return compteDao.findAll();
     }
-    public List<String> comptesInactifs() {
-        return compteDao.comptesInactifs();
-    }
-    public List<String> verifierAlertes() {
-        return compteDao.verifierAlertes();
-    }
+
+
 
 
 

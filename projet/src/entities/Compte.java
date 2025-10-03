@@ -1,23 +1,25 @@
 package entities;
 
+import java.util.UUID;
+
 public sealed abstract class Compte permits CompteCourant,CompteEpargne {
-    protected long id;
+    protected UUID id;
     protected String numero;
     protected double solde;
-    protected long idClient;
+    protected UUID idClient;
 
-    public Compte(long id, String numero, double solde, long idClient) {
+    public Compte(UUID id, String numero, double solde, UUID idClient) {
         this.id = id;
         this.numero = numero;
         this.solde = solde;
         this.idClient = idClient;
     }
 
-    public long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -29,11 +31,11 @@ public sealed abstract class Compte permits CompteCourant,CompteEpargne {
         this.numero = numero;
     }
 
-    public long getIdClient() {
+    public UUID getIdClient() {
         return idClient;
     }
 
-    public void setIdClient(long idClient) {
+    public void setIdClient(UUID idClient) {
         this.idClient = idClient;
     }
 

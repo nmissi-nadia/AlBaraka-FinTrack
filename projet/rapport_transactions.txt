@@ -1,0 +1,16 @@
+=== RAPPORT COMPLET ===
+
+--- Top 5 Clients ---
+Client: ahmed | Total: 4400.0
+Client: honaida | Total: 4000.0
+Client: nadia | Total: 4000.0
+
+--- Transactions par type/mois ---
+Mois: 10 | Type: VERSEMENT | Total: 4400.0
+Mois: 10 | Type: VIREMENT | Total: 4000.0
+
+--- Comptes inactifs ---
+
+--- Transactions suspectes ---
+
+--- Alertes comptes ---

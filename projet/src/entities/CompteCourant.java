@@ -1,9 +1,11 @@
 package entities;
 
+import java.util.UUID;
+
 public final class CompteCourant extends Compte{
     private double decouvert;
 
-    public CompteCourant(long id, String numero, double solde, long idClient, double decouvert) {
+    public CompteCourant(UUID id, String numero, double solde, UUID idClient, double decouvert) {
         super(id, numero, solde, idClient);
         this.decouvert = decouvert;
     }

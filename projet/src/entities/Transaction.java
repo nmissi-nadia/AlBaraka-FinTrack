@@ -1,11 +1,14 @@
 package entities;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 
-public record Transaction(long id, LocalDateTime date,
+public record Transaction(UUID id, LocalDateTime date,
                           double montant,
                           TransactionType type,
                           String lieu,
-                          long idCompte) {
+                          UUID compteSource,
+                          UUID compteDestination
+) {
 }

@@ -18,7 +18,6 @@ public class Database {
     public static Connection getConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
             connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("Connexion à la base PostgreSQL réussie !");
         }
         return connection;
     }

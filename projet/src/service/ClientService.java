@@ -5,6 +5,7 @@ import entities.Client;
 import utilitaire.exceptions.ClientNotFoundException;
 
 import java.util.List;
+import java.util.UUID;
 
 public class ClientService {
     private final ClientDao clientDao;
@@ -25,7 +26,7 @@ public class ClientService {
         clientDao.delete(id);
     }
 
-    public Client rechercherClientParId(int id) {
+    public Client rechercherClientParId(UUID id) {
         Client client = clientDao.findById(id);
         if (client == null) {
             throw new ClientNotFoundException("Client avec id " + id + " introuvable.");
