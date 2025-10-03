@@ -36,43 +36,51 @@ L’application repose sur trois entités principales :
 ```mermaid
 classDiagram
     class Client {
+        <<record>>
         UUID id
         String nom
-        String prenom
         String email
-        +getComptes() List<Compte>
     }
 
     class Compte {
-        UUID id_compte
+        <<sealed>>
+        UUID id
         String numero
         double solde
-        +crediter(double montant)
-        +debiter(double montant)
+        UUID idClient
+    }
+
+    class CompteCourant {
+        double decouvertAutorise
+    }
+
+    class CompteEpargne {
+        double tauxInteret
     }
 
     class Transaction {
+        <<record>>
         UUID id
-        LocalDateTime date_transaction
+        LocalDateTime date
         double montant
         TransactionType type
         String lieu
-        UUID compteSource
-        UUID compteDestination
+        UUID idCompte
     }
 
-    class RapportService {
-        +getTopClients() List<Client>
-        +getRapportMensuel() Map<TransactionType, Double>
-        +getTransactionsSuspectes() List<Transaction>
-        +getAlertesComptes() List<String>
+    enum TransactionType {
+        VERSEMENT
+        RETRAIT
+        VIREMENT
     }
 
+    %% Relations
     Client "1" --> "*" Compte
+    Compte <|-- CompteCourant
+    Compte <|-- CompteEpargne
     Compte "1" --> "*" Transaction : effectue
-    RapportService ..> Transaction
-    RapportService ..> Compte
-    RapportService ..> Client
+    Transaction --> TransactionType
+
 ````
 
 ---
